@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Resposta do Motor Elétrico - Malha Aberta e Fechada</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #fafafa;
+            color: #333;
+        }
+        .description-container {
+            width: 100%;
+            max-width: 800px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .description-container h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #0056b3;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 20px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        .chart-container {
+            width: 100%;
+            max-width: 800px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .group-pid {
+            display: contents;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="description-container">
+        <h2>Dinâmica do Sistema</h2>
+        <p><strong>Malha Aberta (Controle Desativado):</strong> O motor recebe uma tensão de entrada fixa \(V_0\). A posição angular \(\theta(t)\) não possui limite e cresce em função do tempo, descrita pela solução analítica da equação diferencial:</p>
+        $$ \theta(t) = \frac{K_{in}V_0}{B_{eq}}t - \frac{J K_{in}V_0}{B_{eq}^2}\left(1 - e^{-\frac{B_{eq}}{J}t}\right) $$
+        
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+
+        <p><strong>Malha Fechada (Controle PID Ativado):</strong> O sistema busca atingir uma posição de referência (Setpoint). O controlador calcula o erro \(e(t) = \theta_{ref} - \theta(t)\) e ajusta a tensão de entrada \(V_{in}\) dinamicamente:</p>
+        $$ V_{in}(t) = K_p e(t) + K_i \int e(t) dt + K_d \frac{de(t)}{dt} $$
+        <p>A simulação resolve numericamente a equação diferencial do motor para encontrar a aceleração angular \(\alpha\), integrando-a para obter a velocidade \(\omega\) e a posição \(\theta\):</p>
+        $$ \alpha = \frac{d^2\theta}{dt^2} = \frac{K_{in} V_{in} - B_{eq} \omega}{J} $$
+    </div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="ControlToggle" checked style="width: auto;">
+                Ativar Controle PID
+            </label>
+        </div>
+
+        <div class="control-group">
+            <label for="Kin">Kin (Constante): <span id="valKin">1.50</span></label>
+            <input type="range" id="Kin" min="0.1" max="5.0" step="0.1" value="1.5">
+        </div>
+        <div class="control-group">
+            <label for="Beq">Beq (Atrito Viscoso): <span id="valBeq">0.20</span></label>
+            <input type="range" id="Beq" min="0.05" max="2.0" step="0.05" value="0.2">
+        </div>
+        <div class="control-group">
+            <label for="J">J (Inércia): <span id="valJ">0.50</span></label>
+            <input type="range" id="J" min="0.1" max="5.0" step="0.1" value="0.5">
+        </div>
+
+        <div class="control-group" id="groupV0" style="display: none;">
+            <label for="V0">V0 (Tensão Fixa): <span id="valV0">12.00</span></label>
+            <input type="range" id="V0" min="0.0" max="24.0" step="0.5" value="12.0">
+        </div>
+
+        <div id="groupPID" class="group-pid">
+            <div class="control-group">
+                <label for="Ref">Setpoint (Posição): <span id="valRef">10.00</span></label>
+                <input type="range" id="Ref" min="1.0" max="20.0" step="1.0" value="10.0">
+            </div>
+            <div class="control-group">
+                <label for="Kp">Kp (Proporcional): <span id="valKp">2.00</span></label>
+                <input type="range" id="Kp" min="0.0" max="20.0" step="0.1" value="2.0">
+            </div>
+            <div class="control-group">
+                <label for="Ki">Ki (Integral): <span id="valKi">0.00</span></label>
+                <input type="range" id="Ki" min="0.0" max="5.0" step="0.05" value="0.0">
+            </div>
+            <div class="control-group">
+                <label for="Kd">Kd (Derivativo): <span id="valKd">0.50</span></label>
+                <input type="range" id="Kd" min="0.0" max="5.0" step="0.05" value="0.5">
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="motorChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('motorChart').getContext('2d');
+        let chart;
+
+        const inputs = {
+            Kin: document.getElementById('Kin'),
+            Beq: document.getElementById('Beq'),
+            J: document.getElementById('J'),
+            V0: document.getElementById('V0'),
+            Ref: document.getElementById('Ref'),
+            Kp: document.getElementById('Kp'),
+            Ki: document.getElementById('Ki'),
+            Kd: document.getElementById('Kd'),
+            Toggle: document.getElementById('ControlToggle')
+        };
+
+        const displays = {
+            Kin: document.getElementById('valKin'),
+            Beq: document.getElementById('valBeq'),
+            J: document.getElementById('valJ'),
+            V0: document.getElementById('valV0'),
+            Ref: document.getElementById('valRef'),
+            Kp: document.getElementById('valKp'),
+            Ki: document.getElementById('valKi'),
+            Kd: document.getElementById('valKd')
+        };
+
+        function generateData() {
+            const Kin = parseFloat(inputs.Kin.value);
+            const Beq = parseFloat(inputs.Beq.value);
+            const J = parseFloat(inputs.J.value);
+            const V0 = parseFloat(inputs.V0.value);
+            const Ref = parseFloat(inputs.Ref.value); 
+            const Kp = parseFloat(inputs.Kp.value);
+            const Ki = parseFloat(inputs.Ki.value);
+            const Kd = parseFloat(inputs.Kd.value);
+            const isControlled = inputs.Toggle.checked;
+
+            const labels = [];
+            const data = [];
+            const setpointData = [];
+            
+            const dt = 0.05; 
+            const tMax = 15.0; 
+
+            let theta = 0;
+            let omega = 0;
+            let integral = 0;
+            let prevError = Ref - theta;
+
+            for (let t = 0; t <= tMax; t += dt) {
+                labels.push(t.toFixed(2));
+                data.push(theta);
+                
+                if (isControlled) {
+                    setpointData.push(Ref);
+                }
+
+                let Vin = 0;
+
+                if (isControlled) {
+                    let error = Ref - theta;
+                    integral += error * dt;
+                    let derivative = (error - prevError) / dt;
+                    
+                    Vin = (Kp * error) + (Ki * integral) + (Kd * derivative);
+                    Vin = Math.max(-24.0, Math.min(24.0, Vin));
+                    
+                    prevError = error;
+                } else {
+                    Vin = V0;
+                }
+
+                let alpha = (Kin * Vin - Beq * omega) / J;
+
+                omega += alpha * dt;
+                theta += omega * dt;
+            }
+
+            return { labels, data, setpointData };
+        }
+
+        function updateChart() {
+            const chartData = generateData();
+            const isControlled = inputs.Toggle.checked;
+            
+            if (chart) {
+                chart.data.labels = chartData.labels;
+                chart.data.datasets[0].data = chartData.data;
+                
+                if (isControlled) {
+                    if (chart.data.datasets.length === 1) {
+                        chart.data.datasets.push({
+                            label: 'Setpoint',
+                            data: chartData.setpointData,
+                            borderColor: '#dc3545',
+                            borderDash: [5, 5],
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0
+                        });
+                    } else {
+                        chart.data.datasets[1].data = chartData.setpointData;
+                    }
+                } else {
+                    if (chart.data.datasets.length > 1) {
+                        chart.data.datasets.pop();
+                    }
+                }
+                
+                chart.update();
+            } else {
+                const datasets = [{
+                    label: 'Posição Angular θ(t)',
+                    data: chartData.data,
+                    borderColor: '#0056b3',
+                    backgroundColor: 'rgba(0, 86, 179, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    pointRadius: 0,
+                    tension: 0.1
+                }];
+
+                if (isControlled) {
+                    datasets.push({
+                        label: 'Setpoint',
+                        data: chartData.setpointData,
+                        borderColor: '#dc3545',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        fill: false,
+                        pointRadius: 0
+                    });
+                }
+
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartData.labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Tempo (s)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Posição' }
+                            }
+                        },
+                        animation: {
+                            duration: 0 
+                        }
+                    }
+                });
+            }
+        }
+
+        Object.keys(inputs).forEach(key => {
+            if (key !== 'Toggle') {
+                inputs[key].addEventListener('input', (e) => {
+                    displays[key].textContent = parseFloat(e.target.value).toFixed(2);
+                    updateChart();
+                });
+            }
+        });
+
+        inputs.Toggle.addEventListener('change', (e) => {
+            const isControlled = e.target.checked;
+            
+            document.getElementById('groupV0').style.display = isControlled ? 'none' : 'flex';
+            
+            const groupPID = document.getElementById('groupPID');
+            if (isControlled) {
+                groupPID.classList.add('group-pid');
+                groupPID.style.display = 'contents';
+            } else {
+                groupPID.classList.remove('group-pid');
+                groupPID.style.display = 'none';
+            }
+            
+            updateChart();
+        });
+
+        updateChart();
+    </script>
+</body>
+</html>
